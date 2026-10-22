@@ -3,6 +3,7 @@ import random
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -22,47 +23,51 @@ def gerar_cpf_valido():
 def conectar_wifi():
     print("📡 Iniciando o robô de autenticação Wi-Fi (Senac DF)...")
     
-    # Configura o navegador para rodar oculto (headless)
     chrome_options = Options()
     chrome_options.add_argument("--headless") 
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--ignore-certificate-errors")
+    chrome_options.add_argument("--allow-running-insecure-content")
     
-    driver = webdriver.Chrome(options=chrome_options)
+    chrome_options.binary_location = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+    
+    service = Service()
+    service.service_args = ["--disable-build-check"]
+    
+    driver = webdriver.Chrome(options=chrome_options, service=service)
     
     try:
-        # acessa diretamente a URL de cadastro que você descobriu!
-        print("🌐 Acessando a página de cadastro do portal...")
-        driver.get("https://gestaowifi.df.senac.br/cadastro")
+        print("🌐 Acessando a rota de captura do portal...")
+        try:
+            driver.get("http://neverssl.com")
+            time.sleep(3)
+        except Exception:
+            # Caso o link de quebra de cache falhe, tenta forçar a rota direta interna descobeta por você
+            print("🔄 Conexão direta via URL de cadastro...")
+            driver.get("https://senac.br")
         
-        # 1. preencher os dados do formulário
         print("📝 Preenchendo dados automatizados em background...")
         
-        # campo CPF (ID verificado por você!)
         input_cpf = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_to_be_clickable((By.ID, "cpf"))
+            EC.presence_of_element_located((By.ID, "cpf"))
         )
         input_cpf.send_keys(gerar_cpf_valido())
         
-        # preenchendo os demais campos estruturais com dados fictícios
-        # mude o e-mail abaixo se quiser receber o recibo da conexão real
         driver.find_element(By.ID, "nome").send_keys("Visitante Autônomo")
         driver.find_element(By.ID, "email").send_keys("seu_email0@gmail.com") 
-        driver.find_element(By.ID, "nascimento").send_keys("15052000") # Formato DDMMAAAA
+        driver.find_element(By.ID, "nascimento").send_keys("15052000")
         driver.find_element(By.ID, "telefone").send_keys("61999999999")
         
-        # 2. marcar a caixa de Concordar com os Termos
         print("⚖️  Aceitando termos de privacidade...")
         checkbox_termos = driver.find_element(By.XPATH, "//input[@type='checkbox']")
         if not checkbox_termos.is_selected():
             driver.execute_script("arguments[0].click();", checkbox_termos)
             
-        # 3. enviar o formulário para liberar a internet
         print("🚀 Enviando cadastro... Liberando acesso!")
         botao_conectar = driver.find_element(By.XPATH, "//*[contains(text(), 'Cadastrar')]")
         botao_conectar.click()
         
-        # tempo de segurança para o servidor registrar o MAC Address do seu PC
         time.sleep(4) 
         print("✅ Sucesso! Seu notebook está autenticado e a internet está liberada.")
         
